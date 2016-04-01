@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/udtspeedtest.iml" filepath="$PROJECT_DIR$/.idea/modules/udtspeedtest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/udtspeedtest_main.iml" filepath="$PROJECT_DIR$/.idea/modules/udtspeedtest_main.iml" group="udtspeedtest" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/udtspeedtest_test.iml" filepath="$PROJECT_DIR$/.idea/modules/udtspeedtest_test.iml" group="udtspeedtest" />
+    </modules>
+  </component>
+</project>
