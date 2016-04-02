@@ -1,23 +1,23 @@
 package org.toby.toys.udtspeedtest;
 
-import com.barchart.udt.ExceptionUDT;
-import com.barchart.udt.SocketUDT;
-import com.barchart.udt.TypeUDT;
 import com.barchart.udt.net.NetServerSocketUDT;
 import com.barchart.udt.net.NetSocketUDT;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class UDTSpeedtest {
 
-    public static final int dataSizeMB = 10;
-    public static final int readPerMB = 1;
+    public static final int dataSizeMB = 50;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         if (args.length < 1) {
             out("use -s for server & -c for client");
             return;
@@ -42,7 +42,7 @@ public class UDTSpeedtest {
         }
     }
 
-    public static void client() throws IOException {
+    public static void client() throws IOException, InterruptedException {
         Scanner scanner = new Scanner(System.in);
         out("Target address -");
         String addr = scanner.next();
@@ -52,14 +52,13 @@ public class UDTSpeedtest {
         socket.connect(new InetSocketAddress(addr, port));
         DataInputStream inputStream = new DataInputStream(socket.getInputStream());
         out("connected, start receiving...");
-        while (!socket.isClosed()) {
-            byte[] bytes = new byte[readPerMB * 1024 * 1024]; //1MB
-            long startTime = System.currentTimeMillis();
-            inputStream.readFully(bytes);
-            long endTime = System.currentTimeMillis();
-            out(((bytes.length / 1024 / 1024) / ((endTime - startTime) / (float) 1000)) + " MB/s");
+        ClientReceiver receiver = new ClientReceiver(socket, new AtomicInteger(0));
+        new Thread(receiver).start();
+        while (receiver.isAlive()) {
+            Thread.sleep(1000);
+            out(((float) receiver.getReceiveCounter().get() / 1024 / 1024) + " MB/s");
+            receiver.getReceiveCounter().set(0);
         }
-        out("disconnected.");
     }
 
     public static void out(String str) {
@@ -91,4 +90,55 @@ class ServerSender implements Runnable {
             UDTSpeedtest.out(socket.getInetAddress().toString() + " failed.");
         }
     }
+}
+
+class ClientReceiver implements Runnable {
+
+    private Socket socket;
+    private AtomicInteger receiveCounter;
+    private boolean alive = true;
+
+    public boolean isAlive() {
+        return alive;
+    }
+
+    public ClientReceiver(Socket socket, AtomicInteger receiveCounter) {
+        this.socket = socket;
+        this.receiveCounter = receiveCounter;
+    }
+
+    public Socket getSocket() {
+        return socket;
+    }
+
+    public void setSocket(Socket socket) {
+        this.socket = socket;
+    }
+
+    public AtomicInteger getReceiveCounter() {
+        return receiveCounter;
+    }
+
+    public void setReceiveCounter(AtomicInteger receiveCounter) {
+        this.receiveCounter = receiveCounter;
+    }
+
+    @Override
+    public void run() {
+        try {
+            InputStream stream = socket.getInputStream();
+            byte[] bytes = new byte[1024 * 1024];
+            int rc;
+            while ((!socket.isClosed()) && ((rc = stream.read(bytes)) != -1)) {
+                receiveCounter.addAndGet(rc);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            alive = false;
+            UDTSpeedtest.out("disconnected.");
+        }
+    }
+
+
 }
